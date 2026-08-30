@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AP Chemistry Practice</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --navy:#1a1a1a; --navy-dark:#000000; --blue:#0058cc; --flag:#d97b0f; --flag-bg:#fdf1e4;
+    --bg:#ffffff; --panel:#f6f6f7; --line:#dcdde0; --text:#1a1a1a; --muted:#5f6368;
+    --correct:#1e7a34; --correct-bg:#e7f5ea; --incorrect:#b23a2e; --incorrect-bg:#fbeae8; --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Helvetica Neue",Arial,-apple-system,BlinkMacSystemFont,sans-serif;color:var(--text);background:var(--bg);}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- HOME ---------- */
+  #homeScreen{max-width:960px;margin:0 auto;padding:32px 20px 80px;}
+  .home-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:3px solid var(--navy);padding-bottom:16px;}
+  .home-header h1{font-size:22px;margin:0;color:var(--navy);}
+  .home-header .sub{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .upload-btn{background:var(--navy);color:#fff;border:none;padding:11px 18px;border-radius:var(--radius);font-size:14px;font-weight:600;}
+  .upload-btn:hover{background:var(--navy-dark);}
+  .upload-btn:disabled{opacity:.55;cursor:default;}
+  .btn-outline{background:#fff;border:1.5px solid var(--navy);color:var(--navy);padding:9px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;}
+  .btn-outline:hover{background:var(--navy);color:#fff;}
+  .btn-outline:disabled{opacity:.4;cursor:default;}
+  .btn-text{background:none;border:none;color:var(--muted);font-size:12.5px;text-decoration:underline;}
+
+  .upload-status{margin:14px 0;padding:12px 14px;border-radius:var(--radius);background:var(--panel);font-size:13.5px;color:var(--muted);display:none;white-space:pre-line;}
+  .upload-status.show{display:block;}
+  .upload-status.error{background:var(--incorrect-bg);color:var(--incorrect);}
+
+  .filter-row{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 22px;}
+  .chip{border:1.5px solid var(--line);background:#fff;padding:7px 13px;border-radius:20px;font-size:12.5px;color:var(--muted);position:relative;}
+  .chip:hover{border-color:var(--blue);}
+  .chip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .chip.flag{border-color:var(--flag);color:var(--flag);}
+  .chip.flag.active{background:var(--flag);border-color:var(--flag);color:#fff;}
+  .chip .count{opacity:.7;margin-left:4px;}
+
+  .bank-summary{border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .bank-summary .n{font-size:28px;font-weight:700;color:var(--navy);}
+  .bank-summary .lbl{font-size:12px;color:var(--muted);}
+
+  .empty-state{border:1.5px dashed var(--line);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--muted);font-size:14px;}
+  .set-list{border-top:1px solid var(--line);margin-top:8px;}
+  .set-row{display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .set-row .cnt{color:var(--muted);font-size:12.5px;}
+
+  /* modal (size picker) */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(5,41,76,.45);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal-backdrop.show{display:flex;}
+  .modal{background:#fff;border-radius:8px;padding:24px 26px;width:340px;}
+  .modal h3{margin:0 0 6px;font-size:16px;}
+  .modal p{margin:0 0 14px;font-size:13px;color:var(--muted);}
+  .modal select{width:100%;padding:9px;border-radius:5px;border:1.5px solid var(--line);font-size:14px;margin-bottom:10px;}
+  .modal .row{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+
+  /* ---------- REVIEW SCREEN (parsed questions before saving) ---------- */
+  #reviewScreen{display:none;max-width:820px;margin:0 auto;padding:32px 20px 100px;}
+  #reviewScreen h2{color:var(--navy);margin-bottom:4px;}
+  #reviewScreen .sub{font-size:13px;color:var(--muted);margin-bottom:20px;white-space:pre-line;}
+  .review-unit-picker{display:flex;align-items:center;gap:10px;margin-bottom:20px;background:var(--panel);padding:12px 16px;border-radius:var(--radius);}
+  .review-unit-picker select{padding:8px;border-radius:5px;border:1.5px solid var(--line);font-size:13.5px;}
+  .parsed-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .parsed-card .top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .parsed-card .top-row .num{font-weight:700;font-size:13px;color:var(--navy);}
+  .parsed-card textarea{width:100%;border:1px solid var(--line);border-radius:5px;padding:8px;font-size:13.5px;font-family:inherit;resize:vertical;margin-bottom:8px;}
+  .parsed-choice-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .parsed-choice-row .letter-lbl{width:20px;font-weight:700;font-size:13px;color:var(--muted);}
+  .parsed-choice-row input[type=text]{flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:5px;font-size:13px;}
+  .parsed-choice-row input[type=radio]{transform:scale(1.2);}
+  .remove-parsed{color:var(--incorrect);background:none;border:none;font-size:12px;text-decoration:underline;}
+  .review-footer{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:16px 0;display:flex;justify-content:flex-end;gap:10px;}
+
+  /* ---------- EXAM ---------- */
+  #examScreen{display:none;flex-direction:column;height:100vh;}
+  .exam-top{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 22px;flex-shrink:0;}
+  .exam-top .course{font-size:14px;font-weight:600;}
+  .exam-top .course span{display:block;font-size:11px;font-weight:400;color:#b9c9da;}
+  .exam-top .timer{font-size:15px;font-weight:600;letter-spacing:.5px;}
+  .exam-top .exit{background:none;border:1px solid #ffffff55;color:#fff;padding:6px 12px;border-radius:4px;font-size:12.5px;}
+  .exam-top .exit:hover{background:#ffffff22;}
+  .exam-body{flex:1;overflow-y:auto;padding:34px 22px 40px;max-width:760px;margin:0 auto;width:100%;}
+  .q-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .q-num-badge{background:var(--navy);color:#fff;font-size:13px;font-weight:700;padding:4px 10px;border-radius:4px;}
+  .q-unit-badge{font-size:11.5px;color:var(--muted);border:1px solid var(--line);padding:3px 9px;border-radius:12px;}
+  .flag-review-badge{font-size:11px;font-weight:700;color:var(--flag);background:var(--flag-bg);padding:3px 9px;border-radius:12px;}
+  .mark-review{margin-left:auto;display:flex;align-items:center;gap:6px;background:none;border:1.5px solid var(--line);padding:6px 12px;border-radius:20px;font-size:12.5px;color:var(--muted);}
+  .mark-review.active{background:var(--flag-bg);border-color:var(--flag);color:var(--flag);font-weight:600;}
+  .q-stem{font-size:16px;line-height:1.55;margin-bottom:22px;white-space:pre-wrap;}
+  .choice{display:flex;align-items:flex-start;gap:12px;border:1.5px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin-bottom:10px;font-size:14.5px;line-height:1.45;background:#fff;}
+  .choice:hover{border-color:var(--blue);background:#f7fafd;}
+  .choice.selected{border-color:var(--blue);background:#eaf2fb;}
+  .choice .letter{flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:var(--muted);}
+  .choice.selected .letter{background:var(--blue);border-color:var(--blue);color:#fff;}
+  .choice.reveal-correct{border-color:var(--correct);background:var(--correct-bg);}
+  .choice.reveal-correct .letter{background:var(--correct);border-color:var(--correct);color:#fff;}
+  .choice.reveal-incorrect{border-color:var(--incorrect);background:var(--incorrect-bg);}
+  .choice.reveal-incorrect .letter{background:var(--incorrect);border-color:var(--incorrect);color:#fff;}
+  .frq-box{width:100%;min-height:220px;border:1.5px solid var(--line);border-radius:var(--radius);padding:14px;font-size:14.5px;font-family:inherit;resize:vertical;}
+  .frq-self-mark{margin-top:16px;padding:16px;background:var(--panel);border-radius:var(--radius);}
+  .frq-self-mark .sample{white-space:pre-wrap;font-size:13.5px;color:var(--muted);margin:10px 0;padding:12px;background:#fff;border:1px solid var(--line);border-radius:5px;}
+  .frq-self-mark .row{display:flex;gap:10px;margin-top:10px;}
+  .exam-bottom{background:var(--panel);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:12px 22px;flex-shrink:0;}
+  .nav-btn{background:var(--navy);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);font-size:13.5px;font-weight:600;}
+  .nav-btn:hover{background:var(--navy-dark);}
+  .nav-btn.secondary{background:#fff;border:1.5px solid var(--navy);color:var(--navy);}
+  .nav-btn.secondary:hover{background:var(--navy);color:#fff;}
+  .nav-btn:disabled{opacity:.4;cursor:default;}
+  .qcount-btn{background:none;border:none;font-size:12.5px;color:var(--muted);text-decoration:underline;}
+  .nav-overlay{position:fixed;inset:0;background:rgba(5,41,76,.5);display:none;align-items:flex-end;justify-content:center;z-index:60;}
+  .nav-overlay.show{display:flex;}
+  .nav-panel{background:#fff;width:100%;max-width:640px;border-radius:10px 10px 0 0;padding:22px 26px 26px;max-height:70vh;overflow-y:auto;}
+  .nav-panel h3{margin:0 0 4px;font-size:16px;}
+  .nav-panel .legend{display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin:8px 0 18px;flex-wrap:wrap;}
+  .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;}
+  .grid-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+  .grid-cell{position:relative;aspect-ratio:1;border:1.5px solid var(--line);border-radius:5px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--muted);}
+  .grid-cell.answered{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .grid-cell.current{outline:2.5px solid var(--blue);outline-offset:1px;}
+  .grid-cell .flag-dot{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--flag);}
+  .nav-panel .close-row{margin-top:20px;display:flex;justify-content:flex-end;gap:10px;}
+
+  /* ---------- RESULTS ---------- */
+  #resultsScreen{display:none;max-width:760px;margin:0 auto;padding:36px 20px 80px;}
+  .score-box{background:var(--navy);color:#fff;border-radius:10px;padding:26px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;gap:20px;flex-wrap:wrap;}
+  .score-box .big{font-size:38px;font-weight:700;}
+  .score-box .lbl{font-size:12px;color:#b9c9da;margin-top:2px;}
+  .score-stats{display:flex;gap:24px;}
+  .review-item{border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;}
+  .review-item .tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .tag{font-size:11px;font-weight:700;letter-spacing:.4px;padding:2px 8px;border-radius:3px;display:inline-block;}
+  .tag.correct{background:var(--correct-bg);color:var(--correct);}
+  .tag.incorrect{background:var(--incorrect-bg);color:var(--incorrect);}
+  .tag.time{background:var(--panel);color:var(--muted);}
+  .tag.flagged{background:var(--flag-bg);color:var(--flag);}
+  .review-item .stem{font-size:14px;margin-bottom:8px;}
+  .review-item .ans-line{font-size:13px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- ============ HOME ============ -->
+<div id="homeScreen">
+  <div class="home-header">
+    <div>
+      <h1>AP Chemistry Practice</h1>
+      <div class="sub">Upload a practice PDF — questions get pattern-matched out, you confirm, then it's in your bank</div>
+    </div>
+    <div>
+      <input type="file" id="pdfInput" accept="application/pdf" style="display:none">
+      <button class="upload-btn" id="uploadBtn">Upload PDF</button>
+    </div>
+  </div>
+
+  <div class="upload-status" id="uploadStatus"></div>
+
+  <div class="filter-row" id="typeRow">
+    <button class="chip active" data-type="all">All types</button>
+    <button class="chip" data-type="mcq">MCQ</button>
+    <button class="chip" data-type="frq">FRQ</button>
+  </div>
+
+  <div class="filter-row" id="unitFilterRow"></div>
+
+  <div class="bank-summary">
+    <div>
+      <div class="n" id="filteredCount">0</div>
+      <div class="lbl">questions match this filter</div>
+    </div>
+    <button class="btn-outline" id="startPracticeBtn" disabled>Start Practice</button>
+  </div>
+
+  <div id="setsListWrap"></div>
+</div>
+
+<!-- ============ SIZE MODAL ============ -->
+<div class="modal-backdrop" id="sizeModal">
+  <div class="modal">
+    <h3>Start practice</h3>
+    <p id="modalSub">Choose how many questions.</p>
+    <select id="sizeSelect"></select>
+    <div class="row">
+      <button class="btn-text" id="modalCancel">Cancel</button>
+      <button class="upload-btn" id="modalStart">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ REVIEW SCREEN ============ -->
+<div id="reviewScreen">
+  <h2>Review parsed questions</h2>
+  <div class="sub" id="reviewSubtext"></div>
+  <div class="review-unit-picker">
+    <span style="font-size:13px;">Tag this whole set as unit:</span>
+    <select id="bulkUnitSelect"></select>
+    <span style="font-size:12px;color:var(--muted);">(you can still fix individual questions below)</span>
+  </div>
+  <div id="parsedList"></div>
+  <div class="review-footer">
+    <button class="btn-text" id="reviewCancel">Discard all</button>
+    <button class="upload-btn" id="reviewSaveBtn">Save to Bank</button>
+  </div>
+</div>
+
+<!-- ============ EXAM ============ -->
+<div id="examScreen">
+  <div class="exam-top">
+    <div class="course">AP Chemistry <span id="setTitleTop"></span></div>
+    <div class="timer" id="timerDisplay">00:00</div>
+    <button class="exit" id="exitExam">Exit</button>
+  </div>
+  <div class="exam-body">
+    <div class="q-head">
+      <div class="q-num-badge" id="qNumBadge">Question 1</div>
+      <div class="q-unit-badge" id="qUnitBadge"></div>
+      <div class="flag-review-badge" id="flagReviewBadge" style="display:none;">Missed before</div>
+      <button class="mark-review" id="markReviewBtn">&#9873; Mark for Review</button>
+    </div>
+    <div class="q-stem" id="qStem"></div>
+    <div id="choicesWrap"></div>
+    <div id="frqWrap" style="display:none;">
+      <textarea class="frq-box" id="frqInput" placeholder="Write your response here..."></textarea>
+      <div class="frq-self-mark" id="frqSelfMark" style="display:none;">
+        <strong style="font-size:13px;">Sample response / rubric:</strong>
+        <div class="sample" id="sampleResponseText"></div>
+        <div style="font-size:12.5px;color:var(--muted);">Compare your answer, then mark yourself honestly:</div>
+        <div class="row">
+          <button class="nav-btn" id="frqGotItBtn" style="background:var(--correct);">I got this right</button>
+          <button class="nav-btn secondary" id="frqMissedBtn" style="border-color:var(--incorrect);color:var(--incorrect);">I need to review this</button>
+        </div>
+      </div>
+      <button class="btn-outline" id="frqRevealBtn" style="margin-top:14px;">Show sample response</button>
+    </div>
+  </div>
+  <div class="exam-bottom">
+    <button class="nav-btn secondary" id="prevBtn">Back</button>
+    <button class="qcount-btn" id="navGridBtn"></button>
+    <button class="nav-btn" id="nextBtn">Next</button>
+  </div>
+</div>
+
+<div class="nav-overlay" id="navOverlay">
+  <div class="nav-panel">
+    <h3>Question Navigator</h3>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:var(--navy)"></span>Answered</span>
+      <span><span class="legend-dot" style="background:var(--flag)"></span>Marked for review</span>
+      <span><span class="legend-dot" style="background:#fff;border:1.5px solid var(--line)"></span>Unanswered</span>
+    </div>
+    <div class="grid-nav" id="gridNav"></div>
+    <div class="close-row">
+      <button class="btn-text" id="navClose">Close</button>
+      <button class="upload-btn" id="submitExamBtn">Submit Practice Set</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESULTS ============ -->
+<div id="resultsScreen">
+  <div class="score-box">
+    <div>
+      <div class="big" id="scoreBig">0/0</div>
+      <div class="lbl">Questions correct</div>
+    </div>
+    <div class="score-stats">
+      <div><div class="big" id="totalTime" style="font-size:20px;">0:00</div><div class="lbl">Total time</div></div>
+      <div><div class="big" id="avgTime" style="font-size:20px;">0:00</div><div class="lbl">Avg / question</div></div>
+    </div>
+    <button class="nav-btn secondary" style="background:transparent;border-color:#fff;color:#fff;" id="backToBank">Back to bank</button>
+  </div>
+  <div id="historyStatus" style="font-size:12.5px;color:var(--muted);margin-bottom:18px;padding:10px 14px;background:var(--panel);border-radius:var(--radius);"></div>
+  <div id="reviewList"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============ CONFIG — fill these in with your own project ============
+  const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";        // e.g. https://xxxx.supabase.co
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  // No edge function, no AI, no API key needed for this version.
+  // =========================================================================
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const UNITS = [
+    "Atomic Structure & Properties",
+    "Molecular & Ionic Compound Structure & Properties",
+    "Intermolecular Forces & Properties",
+    "Chemical Reactions",
+    "Kinetics",
+    "Thermodynamics",
+    "Equilibrium",
+    "Acids & Bases",
+    "Applications of Thermodynamics",
+    "Unsorted"
+  ];
+  const UNIT_KEYWORDS = {
+    "Atomic Structure & Properties": ["electron configuration","ionization energy","atomic radius","periodic trend","quantum","photoelectron","coulomb"],
+    "Molecular & Ionic Compound Structure & Properties": ["lewis structure","vsepr","lattice energy","bond angle","hybridization","ionic bond","covalent bond","molecular geometry"],
+    "Intermolecular Forces & Properties": ["intermolecular","vapor pressure","viscosity","molarity","solution","dipole","hydrogen bond","london dispersion","phase diagram"],
+    "Chemical Reactions": ["stoichiometry","mole ratio","balanc","net ionic","limiting reactant","oxidation number","precipitat","molar mass"],
+    "Kinetics": ["rate law","rate constant","half-life","reaction mechanism","rate of reaction","activation energy","arrhenius"],
+    "Thermodynamics": ["enthalpy","entropy","hess's law","calorimetry","heat capacity","exothermic","endothermic"],
+    "Equilibrium": ["keq","equilibrium constant","ice table","le chatelier","kc","kp","ksp"],
+    "Acids & Bases": ["ph ","pka","titration","buffer","weak acid","weak base","conjugate","equivalence point"],
+    "Applications of Thermodynamics": ["gibbs","free energy","electrochemistry","cell potential","galvanic","electrolytic","nernst"]
+  };
+  function guessUnit(text){
+    const t = text.toLowerCase();
+    let best = "Unsorted", bestScore = 0;
+    for(const [unit, kws] of Object.entries(UNIT_KEYWORDS)){
+      const score = kws.reduce((s,kw)=> s + (t.includes(kw)?1:0), 0);
+      if(score > bestScore){ bestScore = score; best = unit; }
+    }
+    return best;
+  }
+
+  let allQuestions = [];
+  let activeUnit = "all";
+  let activeType = "all";
+  let activeFlaggedOnly = false;
+  let filteredPool = [];
+
+  let examQuestions = [];
+  let answers = {};
+  let marked = {};
+  let frqSelfGrade = {};   // idx -> true/false once self-marked
+  let curIdx = 0;
+  let timerSeconds = 0;
+  let timerHandle = null;
+  let qStartTime = 0;
+  let timeSpent = {};
+
+  let pendingQuestions = []; // parsed-but-not-saved, shown on review screen
+  let pendingSourceTitle = "";
+  let pendingDiagnostics = null;
+
+  function escapeHtml(str){
+    const d = document.createElement("div");
+    d.textContent = str == null ? "" : String(str);
+    return d.innerHTML;
+  }
+  function fmtTime(sec){
+    const m = Math.floor(sec/60), s = sec%60;
+    return `${m}:${String(s).padStart(2,"0")}`;
+  }
+
+  // ================= LOAD BANK =================
+  async function loadBank(){
+    const { data, error } = await sb.from("apchem_questions").select("*").order("created_at",{ascending:false});
+    if(error){ console.error(error); allQuestions = []; }
+    else{ allQuestions = data || []; }
+    renderUnitChips();
+    applyFilters();
+    renderSourceList();
+  }
+
+  function renderUnitChips(){
+    const wrap = document.getElementById("unitFilterRow");
+    wrap.innerHTML = "";
+    const allChip = document.createElement("button");
+    allChip.className = "chip active";
+    allChip.dataset.unit = "all";
+    allChip.textContent = `All units (${allQuestions.length})`;
+    wrap.appendChild(allChip);
+
+    UNITS.forEach(u=>{
+      const n = allQuestions.filter(q=>q.unit===u).length;
+      if(n===0) return;
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.dataset.unit = u;
+      chip.innerHTML = `${u} <span class="count">${n}</span>`;
+      wrap.appendChild(chip);
+    });
+
+    const flagCount = allQuestions.filter(q=>q.needs_review).length;
+    const flagChip = document.createElement("button");
+    flagChip.className = "chip flag";
+    flagChip.dataset.unit = "__flagged__";
+    flagChip.innerHTML = `&#9873; Flagged for review <span class="count">${flagCount}</span>`;
+    wrap.appendChild(flagChip);
+
+    wrap.querySelectorAll(".chip").forEach(c=>c.addEventListener("click", ()=>{
+      if(c.dataset.unit === "__flagged__"){
+        activeFlaggedOnly = !activeFlaggedOnly;
+        c.classList.toggle("active", activeFlaggedOnly);
+      }else{
+        activeUnit = c.dataset.unit;
+        wrap.querySelectorAll(".chip:not(.flag)").forEach(x=>x.classList.remove("active"));
+        c.classList.add("active");
+      }
+      applyFilters();
+    }));
+  }
+
+  function applyFilters(){
+    filteredPool = allQuestions.filter(q=>{
+      if(activeFlaggedOnly && !q.needs_review) return false;
+      if(activeUnit!=="all" && q.unit!==activeUnit) return false;
+      if(activeType!=="all" && q.type!==activeType) return false;
+      return true;
+    });
+    document.getElementById("filteredCount").textContent = filteredPool.length;
+    document.getElementById("startPracticeBtn").disabled = filteredPool.length===0;
+  }
+
+  document.getElementById("typeRow").querySelectorAll(".chip").forEach(c=>{
+    c.addEventListener("click", ()=>{
+      activeType = c.dataset.type;
+      document.querySelectorAll("#typeRow .chip").forEach(x=>x.classList.remove("active"));
+      c.classList.add("active");
+      applyFilters();
+    });
+  });
+
+  function renderSourceList(){
+    const wrap = document.getElementById("setsListWrap");
+    if(allQuestions.length===0){
+      wrap.innerHTML = '<div class="empty-state">No questions yet — upload an AP Chem practice PDF above to build your bank.</div>';
+      return;
+    }
+    const sources = {};
+    allQuestions.forEach(q=>{
+      const key = q.source_title || "Unknown source";
+      sources[key] = (sources[key]||0)+1;
+    });
+    let html = '<div class="set-list">';
+    Object.keys(sources).forEach(title=>{
+      html += `<div class="set-row"><span>${escapeHtml(title)}</span><span class="cnt">${sources[title]} question${sources[title]===1?"":"s"}</span></div>`;
+    });
+    html += "</div>";
+    wrap.innerHTML = html;
+  }
+
+  // ================= PDF UPLOAD + LOCAL PARSING =================
+  const pdfInput = document.getElementById("pdfInput");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const statusBox = document.getElementById("uploadStatus");
+  uploadBtn.addEventListener("click", ()=>pdfInput.click());
+  pdfInput.addEventListener("change", handlePdfUpload);
+
+  function setStatus(msg,isError){
+    statusBox.textContent = msg;
+    statusBox.className = "upload-status show" + (isError?" error":"");
+  }
+
+  async function extractPdfLines(file){
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let allLines = []; // {page, text}
+    for(let p=1;p<=pdf.numPages;p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      let lastY = null, lineText = "";
+      content.items.forEach(item=>{
+        const y = item.transform[5];
+        if(lastY !== null && Math.abs(y-lastY) > 2){
+          if(lineText.trim()) allLines.push({page:p, text:lineText.trim()});
+          lineText = "";
+        }
+        lineText += item.str + " ";
+        lastY = y;
+      });
+      if(lineText.trim()) allLines.push({page:p, text:lineText.trim()});
+    }
+    return allLines;
+  }
+
+  const Q_LINE_RE = /^(?:Q(?:uestion)?\.?\s*)?(\d{1,3})\s*[.):]\s*(.*)$/i;
+  const CHOICE_LINE_RE = /^\(?([A-E])\)?\s*[.):]\s*(.*)$/;
+
+  function findAnswerKeySection(lines){
+    // 1) explicit heading, searched from the END backwards (key is almost always near the end)
+    for(let i=lines.length-1;i>=0;i--){
+      if(/\b(answer\s*key|answers?|key|solutions?)\b\s*[:\-]?\s*$/i.test(lines[i].text) && lines[i].text.length < 40){
+        return {startIdx:i, page:lines[i].page, method:"heading"};
+      }
+    }
+    // 2) fallback: density scan from the last page backwards — look for runs of "N. LETTER" tokens
+    const lastPage = lines.length ? lines[lines.length-1].page : 0;
+    for(let scanPage = lastPage; scanPage >= Math.max(1,lastPage-3); scanPage--){
+      const pageLineIdxs = [];
+      lines.forEach((l,i)=>{ if(l.page===scanPage) pageLineIdxs.push(i); });
+      if(pageLineIdxs.length===0) continue;
+      const pageText = pageLineIdxs.map(i=>lines[i].text).join(" ");
+      const matches = pageText.match(/\b\d{1,3}\s*[.):]\s*[A-E]\b/g) || [];
+      if(matches.length >= 4){
+        return {startIdx: pageLineIdxs[0], page: scanPage, method:"density", matchCount: matches.length};
+      }
+    }
+    return null;
+  }
+
+  function parseQuestionsFromLines(lines){
+    const keyInfo = findAnswerKeySection(lines);
+    let bodyLines, keyLines;
+    if(keyInfo){
+      bodyLines = lines.slice(0, keyInfo.startIdx);
+      keyLines = lines.slice(keyInfo.startIdx);
+    }else{
+      bodyLines = lines;
+      keyLines = [];
+    }
+
+    // build answer key map: question number -> correct letter
+    const keyMap = {};
+    const keyText = keyLines.map(l=>l.text).join(" ");
+    const keyRegex = /\b(\d{1,3})\s*[.):]\s*([A-E])\b/g;
+    let km;
+    while((km = keyRegex.exec(keyText)) !== null){
+      const num = parseInt(km[1],10);
+      if(!(num in keyMap)) keyMap[num] = km[2];
+    }
+
+    // line-by-line state machine over the body
+    const rawQuestions = []; // {num, stemLines:[], choices: {letter:[lines]}, order:[letters]}
+    let current = null, state = "NONE", curLetter = null;
+
+    function pushCurrent(){
+      if(current) rawQuestions.push(current);
+    }
+
+    let lastNum = 0;
+    bodyLines.forEach(({text})=>{
+      const qm = Q_LINE_RE.exec(text);
+      if(qm){
+        const num = parseInt(qm[1],10);
+        const rest = qm[2] || "";
+        const restStartsWithDigit = /^\d/.test(rest.trim());
+        const plausibleSequence = (lastNum===0) || (num > lastNum) || (num === lastNum+1);
+        if(!restStartsWithDigit && plausibleSequence && num <= 300){
+          pushCurrent();
+          current = { num, stemLines:[rest], choices:{}, order:[] };
+          state = "STEM"; curLetter = null; lastNum = num;
+          return;
+        }
+      }
+      if(current){
+        const cm = CHOICE_LINE_RE.exec(text);
+        if(cm){
+          const letter = cm[1].toUpperCase();
+          current.choices[letter] = [cm[2]||""];
+          if(!current.order.includes(letter)) current.order.push(letter);
+          curLetter = letter; state = "CHOICES";
+          return;
+        }
+        if(state==="STEM"){ current.stemLines.push(text); }
+        else if(state==="CHOICES" && curLetter){ current.choices[curLetter].push(text); }
+      }
+    });
+    pushCurrent();
+
+    // validate + assemble, tracking why anything got skipped (for diagnostics)
+    const results = [];
+    const skipped = [];
+    rawQuestions.forEach(rq=>{
+      const stem = rq.stemLines.join(" ").replace(/\s+/g," ").trim();
+      const choices = {};
+      rq.order.forEach(letter=>{
+        const t = rq.choices[letter].join(" ").replace(/\s+/g," ").trim();
+        if(t) choices[letter] = t;
+      });
+      if(stem.length < 5){ skipped.push({num:rq.num, reason:"stem too short / likely false match"}); return; }
+
+      if(Object.keys(choices).length < 2){
+        // no lettered choices found at all — this is very likely a free-response question,
+        // not a broken MCQ, as long as the stem is substantial (real FRQs are long).
+        if(stem.length >= 60){
+          results.push({ num: rq.num, type:"frq", question: stem, sample_response: "" });
+        }else{
+          skipped.push({num:rq.num, reason:"fewer than 2 lettered choices found, and stem too short to treat as FRQ"});
+        }
+        return;
+      }
+
+      // has lettered choices — treat as MCQ, which requires a matching key entry to trust the correct answer
+      if(!(rq.num in keyMap)){ skipped.push({num:rq.num, reason:"looks like MCQ (lettered choices found) but no matching answer key entry"}); return; }
+      if(!choices[keyMap[rq.num]]){ skipped.push({num:rq.num, reason:`key says "${keyMap[rq.num]}" but that choice wasn't extracted`}); return; }
+      results.push({ num: rq.num, type:"mcq", question: stem, choices, correct: keyMap[rq.num] });
+      if(results.length >= 40) return;
+    });
+
+    return { results, skipped, keyInfo, keyCount: Object.keys(keyMap).length };
+  }
+
+  async function handlePdfUpload(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    uploadBtn.disabled = true;
+    setStatus("Reading PDF…", false);
+    try{
+      const lines = await extractPdfLines(file);
+      setStatus("Scanning for questions and an answer key…", false);
+      const { results, skipped, keyInfo, keyCount } = parseQuestionsFromLines(lines);
+
+      if(results.length === 0){
+        let msg = "Couldn't extract any questions from that PDF.\n";
+        if(keyInfo){
+          msg += `Found what looks like an answer key on page ${keyInfo.page} (${keyCount} answers), but no question matched it.`;
+        }else{
+          msg += `No answer key section found, and no question had 2+ lettered choices to be treated as MCQ, and no block was long enough to be treated as FRQ.`;
+        }
+        const why = skipped.slice(0,3).map(s=>`#${s.num}: ${s.reason}`).join("\n");
+        if(why) msg += `\nExamples of what was skipped:\n${why}`;
+        setStatus(msg, true);
+        uploadBtn.disabled = false;
+        pdfInput.value = "";
+        return;
+      }
+
+      pendingQuestions = results;
+      pendingSourceTitle = file.name.replace(/\.pdf$/i,"");
+      const mcqCount = results.filter(r=>r.type==="mcq").length;
+      const frqCount = results.filter(r=>r.type==="frq").length;
+      pendingDiagnostics = {
+        keyPage: keyInfo? keyInfo.page : null,
+        keyMethod: keyInfo? keyInfo.method : null,
+        keyCount,
+        mcqCount, frqCount,
+        skippedCount: skipped.length,
+        skippedSample: skipped.slice(0,5)
+      };
+      openReviewScreen();
+      setStatus("", false);
+      statusBox.className = "upload-status";
+    }catch(err){
+      console.error(err);
+      setStatus("Upload failed: " + err.message, true);
+    }
+    uploadBtn.disabled = false;
+    pdfInput.value = "";
+  }
+
+  // ================= REVIEW SCREEN =================
+  function openReviewScreen(){
+    document.getElementById("homeScreen").style.display = "none";
+    document.getElementById("reviewScreen").style.display = "block";
+    let diagLine = `${pendingQuestions.length} question(s) parsed from "${pendingSourceTitle}" — check each one, fix anything off, remove any bad parses, then save.`;
+    if(pendingDiagnostics){
+      diagLine += `\n${pendingDiagnostics.mcqCount} MCQ, ${pendingDiagnostics.frqCount} FRQ detected.`;
+      if(pendingDiagnostics.keyPage){
+        diagLine += ` Answer key found on page ${pendingDiagnostics.keyPage} (${pendingDiagnostics.keyMethod==="heading"?'labeled "Answer Key"':"detected by pattern"}), ${pendingDiagnostics.keyCount} answers matched.`;
+      }else{
+        diagLine += ` No MCQ-style answer key found — fine if this PDF is FRQ-only.`;
+      }
+      if(pendingDiagnostics.skippedCount>0){
+        diagLine += ` ${pendingDiagnostics.skippedCount} question(s) skipped rather than guessed — check the source PDF if you expected more.`;
+      }
+    }
+    document.getElementById("reviewSubtext").textContent = diagLine;
+
+    const bulkSel = document.getElementById("bulkUnitSelect");
+    bulkSel.innerHTML = "";
+    const guessed = guessUnit(pendingQuestions.map(q=>q.question).join(" "));
+    UNITS.forEach(u=>{
+      const o = document.createElement("option");
+      o.value = u; o.textContent = u;
+      if(u===guessed) o.selected = true;
+      bulkSel.appendChild(o);
+    });
+    bulkSel.addEventListener("change", ()=>{
+      pendingQuestions.forEach(q=>q.unit = bulkSel.value);
+      renderParsedList();
+    });
+    pendingQuestions.forEach(q=>{ if(!q.unit) q.unit = guessed; });
+
+    renderParsedList();
+  }
+
+  function renderParsedList(){
+    const wrap = document.getElementById("parsedList");
+    wrap.innerHTML = "";
+    pendingQuestions.forEach((q, idx)=>{
+      const card = document.createElement("div");
+      card.className = "parsed-card";
+      const typeBadge = q.type==="frq"
+        ? `<span style="font-size:10.5px;font-weight:700;color:var(--flag);background:var(--flag-bg);padding:2px 8px;border-radius:10px;margin-left:8px;">FRQ</span>`
+        : `<span style="font-size:10.5px;font-weight:700;color:var(--blue);background:#eaf2fb;padding:2px 8px;border-radius:10px;margin-left:8px;">MCQ</span>`;
+
+      if(q.type === "frq"){
+        card.innerHTML = `
+          <div class="top-row">
+            <span class="num">Q${idx+1} (source #${q.num}) ${typeBadge}</span>
+            <button class="remove-parsed" data-remove="${idx}">Remove</button>
+          </div>
+          <textarea rows="4" data-stem-idx="${idx}">${escapeHtml(q.question)}</textarea>
+          <div style="font-size:11.5px;color:var(--muted);margin:6px 0 4px;">Sample response / rubric notes (optional — paste your own if you have one; left blank if none)</div>
+          <textarea rows="3" data-sample-idx="${idx}" placeholder="No sample response — leave blank or paste one in">${escapeHtml(q.sample_response||"")}</textarea>
+        `;
+      }else{
+        let choicesHtml = "";
+        Object.keys(q.choices).forEach(letter=>{
+          choicesHtml += `
+            <div class="parsed-choice-row">
+              <input type="radio" name="correct_${idx}" value="${letter}" ${q.correct===letter?"checked":""} data-idx="${idx}" data-letter="${letter}" class="correct-radio">
+              <span class="letter-lbl">${letter}</span>
+              <input type="text" value="${escapeHtml(q.choices[letter])}" data-idx="${idx}" data-letter="${letter}" class="choice-text-input">
+            </div>`;
+        });
+        card.innerHTML = `
+          <div class="top-row">
+            <span class="num">Q${idx+1} (source #${q.num}) ${typeBadge}</span>
+            <button class="remove-parsed" data-remove="${idx}">Remove</button>
+          </div>
+          <textarea rows="2" data-stem-idx="${idx}">${escapeHtml(q.question)}</textarea>
+          ${choicesHtml}
+        `;
+      }
+      wrap.appendChild(card);
+    });
+
+    wrap.querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click", ()=>{
+      pendingQuestions.splice(parseInt(b.dataset.remove,10),1);
+      renderParsedList();
+    }));
+    wrap.querySelectorAll("[data-stem-idx]").forEach(t=>t.addEventListener("input", ()=>{
+      pendingQuestions[parseInt(t.dataset.stemIdx,10)].question = t.value;
+    }));
+    wrap.querySelectorAll("[data-sample-idx]").forEach(t=>t.addEventListener("input", ()=>{
+      pendingQuestions[parseInt(t.dataset.sampleIdx,10)].sample_response = t.value;
+    }));
+    wrap.querySelectorAll(".choice-text-input").forEach(inp=>inp.addEventListener("input", ()=>{
+      const idx = parseInt(inp.dataset.idx,10), letter = inp.dataset.letter;
+      pendingQuestions[idx].choices[letter] = inp.value;
+    }));
+    wrap.querySelectorAll(".correct-radio").forEach(r=>r.addEventListener("change", ()=>{
+      const idx = parseInt(r.dataset.idx,10), letter = r.dataset.letter;
+      pendingQuestions[idx].correct = letter;
+    }));
+  }
+
+  document.getElementById("reviewCancel").addEventListener("click", ()=>{
+    if(!confirm("Discard all parsed questions?")) return;
+    pendingQuestions = [];
+    document.getElementById("reviewScreen").style.display = "none";
+    document.getElementById("homeScreen").style.display = "block";
+  });
+
+  document.getElementById("reviewSaveBtn").addEventListener("click", async ()=>{
+    if(pendingQuestions.length===0){ alert("Nothing to save."); return; }
+    const saveBtn = document.getElementById("reviewSaveBtn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+
+    const rows = pendingQuestions.map(q=>{
+      if(q.type === "frq"){
+        return {
+          type: "frq",
+          unit: q.unit || "Unsorted",
+          question: q.question,
+          choices: null,
+          correct: null,
+          sample_response: q.sample_response || null,
+          source_title: pendingSourceTitle
+        };
+      }
+      return {
+        type: "mcq",
+        unit: q.unit || "Unsorted",
+        question: q.question,
+        choices: q.choices,
+        correct: q.correct,
+        source_title: pendingSourceTitle
+      };
+    });
+
+    try{
+      // .select() forces Supabase to hand back the rows it actually wrote —
+      // that's how we confirm the save really happened, not just that no error fired.
+      const { data, error } = await sb.from("apchem_questions").insert(rows).select();
+      if(error) throw error;
+      if(!data || data.length !== rows.length){
+        throw new Error(`Expected ${rows.length} rows saved, but got ${data ? data.length : 0} back. Check your table's RLS policy allows inserts.`);
+      }
+
+      // double-check by re-reading the count straight from the table, not just trusting the insert response
+      const beforeCount = allQuestions.length;
+      await loadBank();
+      const afterCount = allQuestions.length;
+      if(afterCount < beforeCount + rows.length){
+        alert(`Warning: insert reported success but the bank only grew by ${afterCount - beforeCount} of ${rows.length} expected. Something's off — check Supabase directly.`);
+      }else{
+        alert(`Saved and confirmed: ${rows.length} question(s) are now in your bank (verified by re-reading the table).`);
+      }
+
+      pendingQuestions = [];
+      document.getElementById("reviewScreen").style.display = "none";
+      document.getElementById("homeScreen").style.display = "block";
+      setStatus(`Saved ${rows.length} questions to your bank.`, false);
+    }catch(err){
+      console.error("Save failed:", err);
+      alert("Save failed: " + err.message + "\n\nCommon causes: SUPABASE_URL/KEY not filled in correctly, the schema SQL wasn't run yet, or RLS policy is blocking inserts.");
+    }finally{
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save to Bank";
+    }
+  });
+
+  // ================= SIZE MODAL / START =================
+  const sizeModal = document.getElementById("sizeModal");
+  document.getElementById("startPracticeBtn").addEventListener("click", ()=>{
+    const sel = document.getElementById("sizeSelect");
+    sel.innerHTML = "";
+    const opts = [5,10,15,20].filter(n=>n<=filteredPool.length);
+    opts.push(filteredPool.length);
+    [...new Set(opts)].sort((a,b)=>a-b).forEach(n=>{
+      const o = document.createElement("option");
+      o.value = n; o.textContent = `${n} question${n===1?"":"s"}` + (n===filteredPool.length?" (all matching)":"");
+      sel.appendChild(o);
+    });
+    document.getElementById("modalSub").textContent = `${filteredPool.length} questions match your current filters.`;
+    sizeModal.classList.add("show");
+  });
+  document.getElementById("modalCancel").addEventListener("click", ()=>sizeModal.classList.remove("show"));
+  document.getElementById("modalStart").addEventListener("click", ()=>{
+    const n = parseInt(document.getElementById("sizeSelect").value,10);
+    sizeModal.classList.remove("show");
+    const shuffled = [...filteredPool].sort(()=>Math.random()-0.5);
+    examQuestions = shuffled.slice(0,n);
+    answers = {}; marked = {}; frqSelfGrade = {}; timeSpent = {}; curIdx = 0; timerSeconds = 0;
+    document.getElementById("setTitleTop").textContent =
+      activeFlaggedOnly ? "— Flagged for Review" : (activeUnit==="all" ? "" : "— " + activeUnit);
+    document.getElementById("homeScreen").style.display = "none";
+    document.getElementById("examScreen").style.display = "flex";
+    startTimer();
+    renderQuestion();
+  });
+
+  function startTimer(){
+    clearInterval(timerHandle);
+    timerHandle = setInterval(()=>{
+      timerSeconds++;
+      document.getElementById("timerDisplay").textContent = fmtTime(timerSeconds);
+    },1000);
+  }
+
+  // ================= EXAM RENDER =================
+  function trackTimeOnCurrent(){
+    const elapsed = Math.round((Date.now()-qStartTime)/1000);
+    timeSpent[curIdx] = (timeSpent[curIdx]||0) + elapsed;
+  }
+
+  function renderQuestion(){
+    qStartTime = Date.now();
+    const q = examQuestions[curIdx];
+    document.getElementById("qNumBadge").textContent = `Question ${curIdx+1}`;
+    document.getElementById("qUnitBadge").textContent = q.unit || "Unsorted";
+    document.getElementById("flagReviewBadge").style.display = q.needs_review ? "inline-block" : "none";
+    document.getElementById("navGridBtn").textContent = `Question ${curIdx+1} of ${examQuestions.length} \u25BE`;
+    document.getElementById("qStem").textContent = q.question;
+
+    const markBtn = document.getElementById("markReviewBtn");
+    markBtn.className = "mark-review" + (marked[curIdx]?" active":"");
+
+    const choicesWrap = document.getElementById("choicesWrap");
+    const frqWrap = document.getElementById("frqWrap");
+
+    if(q.type === "frq"){
+      choicesWrap.style.display = "none";
+      frqWrap.style.display = "block";
+      document.getElementById("frqInput").value = answers[curIdx] || "";
+      document.getElementById("frqSelfMark").style.display = "none";
+      document.getElementById("frqRevealBtn").style.display = "inline-block";
+      document.getElementById("sampleResponseText").textContent = q.sample_response && q.sample_response.trim()
+        ? q.sample_response : "No sample response was provided for this question.";
+    }else{
+      frqWrap.style.display = "none";
+      choicesWrap.style.display = "block";
+      choicesWrap.innerHTML = "";
+      Object.keys(q.choices||{}).forEach(letter=>{
+        const div = document.createElement("div");
+        div.className = "choice" + (answers[curIdx]===letter?" selected":"");
+        div.innerHTML = `<div class="letter">${letter}</div><div>${escapeHtml(q.choices[letter])}</div>`;
+        div.addEventListener("click", ()=>{ answers[curIdx]=letter; renderQuestion(); });
+        choicesWrap.appendChild(div);
+      });
+    }
+
+    document.getElementById("prevBtn").disabled = curIdx===0;
+    document.getElementById("nextBtn").textContent = curIdx===examQuestions.length-1 ? "Review & Submit" : "Next";
+  }
+
+  document.getElementById("frqInput").addEventListener("input", (e)=>{ answers[curIdx] = e.target.value; });
+  document.getElementById("frqRevealBtn").addEventListener("click", ()=>{
+    document.getElementById("frqSelfMark").style.display = "block";
+  });
+  document.getElementById("frqGotItBtn").addEventListener("click", ()=>{ frqSelfGrade[curIdx]=true; goNext(); });
+  document.getElementById("frqMissedBtn").addEventListener("click", ()=>{ frqSelfGrade[curIdx]=false; goNext(); });
+
+  document.getElementById("markReviewBtn").addEventListener("click", ()=>{
+    marked[curIdx] = !marked[curIdx];
+    renderQuestion();
+  });
+  document.getElementById("prevBtn").addEventListener("click", ()=>{
+    if(curIdx>0){ trackTimeOnCurrent(); curIdx--; renderQuestion(); }
+  });
+  document.getElementById("nextBtn").addEventListener("click", goNext);
+  function goNext(){
+    trackTimeOnCurrent();
+    if(curIdx < examQuestions.length-1){ curIdx++; renderQuestion(); }
+    else{ openNavGrid(); }
+  }
+  document.getElementById("exitExam").addEventListener("click", ()=>{
+    if(confirm("Exit this practice set? Progress on this attempt won't be saved.")){
+      clearInterval(timerHandle);
+      document.getElementById("examScreen").style.display = "none";
+      document.getElementById("homeScreen").style.display = "block";
+    }
+  });
+
+  // ================= NAV GRID =================
+  const navOverlay = document.getElementById("navOverlay");
+  document.getElementById("navGridBtn").addEventListener("click", openNavGrid);
+  document.getElementById("navClose").addEventListener("click", ()=>navOverlay.classList.remove("show"));
+  document.getElementById("submitExamBtn").addEventListener("click", submitExam);
+
+  function openNavGrid(){
+    const grid = document.getElementById("gridNav");
+    grid.innerHTML = "";
+    examQuestions.forEach((q,i)=>{
+      const cell = document.createElement("div");
+      cell.className = "grid-cell" + (answers[i]?" answered":"") + (i===curIdx?" current":"");
+      cell.textContent = i+1;
+      if(marked[i]){ const dot=document.createElement("div"); dot.className="flag-dot"; cell.appendChild(dot); }
+      cell.addEventListener("click", ()=>{ trackTimeOnCurrent(); curIdx=i; navOverlay.classList.remove("show"); renderQuestion(); });
+      grid.appendChild(cell);
+    });
+    navOverlay.classList.add("show");
+  }
+
+  // ================= SUBMIT / RESULTS =================
+  async function submitExam(){
+    trackTimeOnCurrent();
+    const unanswered = examQuestions.filter((q,i)=>!answers[i]).length;
+    if(unanswered>0 && !confirm(`${unanswered} question(s) unanswered. Submit anyway?`)) return;
+
+    clearInterval(timerHandle);
+    navOverlay.classList.remove("show");
+    document.getElementById("examScreen").style.display = "none";
+
+    let correctCount = 0;
+    const reviewWrap = document.getElementById("reviewList");
+    reviewWrap.innerHTML = "";
+    const attemptRows = [];
+
+    for(let i=0;i<examQuestions.length;i++){
+      const q = examQuestions[i];
+      const given = answers[i];
+      let isCorrect, hasAnswer;
+      if(q.type === "frq"){
+        hasAnswer = frqSelfGrade[i] !== undefined;
+        isCorrect = frqSelfGrade[i] === true;
+      }else{
+        hasAnswer = given != null;
+        isCorrect = given === q.correct;
+      }
+      if(isCorrect) correctCount++;
+      const secs = timeSpent[i]||0;
+
+      attemptRows.push({
+        question_id: q.id,
+        selected: q.type==="frq" ? (hasAnswer? "self-marked":null) : (given||null),
+        is_correct: hasAnswer ? isCorrect : null,
+        time_seconds: secs
+      });
+
+      const item = document.createElement("div");
+      item.className = "review-item";
+      let bodyHtml = "";
+      if(q.type === "frq"){
+        bodyHtml = `<div class="ans-line" style="white-space:pre-wrap;margin-bottom:6px;">${given? escapeHtml(given) : "<em>Not answered</em>"}</div>
+          ${q.sample_response? `<div class="ans-line" style="color:var(--muted);"><strong>Sample:</strong> ${escapeHtml(q.sample_response)}</div>` : ""}`;
+      }else{
+        let choicesHtml = "";
+        Object.keys(q.choices||{}).forEach(letter=>{
+          let cls = "";
+          if(letter===q.correct) cls="reveal-correct";
+          else if(letter===given) cls="reveal-incorrect";
+          choicesHtml += `<div class="choice ${cls}" style="margin-bottom:6px;"><div class="letter">${letter}</div><div>${escapeHtml(q.choices[letter])}</div></div>`;
+        });
+        bodyHtml = `${choicesHtml}<div class="ans-line">${given? `Your answer: ${given}`:"Not answered"} &nbsp;·&nbsp; Correct answer: ${q.correct}</div>`;
+      }
+      item.innerHTML = `
+        <div class="tags">
+          <span class="tag ${isCorrect?"correct":"incorrect"}">${!hasAnswer?"Unanswered":(isCorrect?"Correct":"Incorrect")}</span>
+          <span class="tag time">${fmtTime(secs)} spent</span>
+          <span class="tag" style="background:var(--panel);color:var(--muted);">${q.unit||"Unsorted"}</span>
+          <span class="tag" style="background:${q.type==='frq'?'var(--flag-bg)':'#eaf2fb'};color:${q.type==='frq'?'var(--flag)':'var(--blue)'};">${q.type==='frq'?'FRQ':'MCQ'}</span>
+          ${q.needs_review? '<span class="tag flagged">Missed before</span>':''}
+        </div>
+        <div class="stem">Q${i+1}. ${escapeHtml(q.question)}</div>
+        ${bodyHtml}
+      `;
+      reviewWrap.appendChild(item);
+    }
+
+    const historyBox = document.getElementById("historyStatus");
+    let newlyFlagged = 0, cleared = 0, updateFailures = [];
+
+    try{
+      const attemptsToSave = attemptRows.filter(r=>r.is_correct !== null); // skip truly unanswered
+      if(attemptsToSave.length > 0){
+        const { data: attemptData, error: attemptErr } = await sb.from("apchem_attempts").insert(attemptsToSave).select();
+        if(attemptErr) throw new Error("Attempt log failed to save: " + attemptErr.message);
+        if(!attemptData || attemptData.length !== attemptsToSave.length){
+          throw new Error(`Attempt log: expected ${attemptsToSave.length} rows saved, only got ${attemptData?attemptData.length:0} back.`);
+        }
+      }
+
+      for(const row of attemptsToSave){
+        const q = examQuestions.find(x=>x.id===row.question_id);
+        const newTimesSeen = (q.times_seen||0)+1;
+        let newTimesMissed = q.times_missed||0;
+        let newNeedsReview = q.needs_review||false;
+        if(row.is_correct){
+          if(newNeedsReview) cleared++;
+          newNeedsReview = false;
+        }else{
+          newTimesMissed += 1;
+          if(newTimesMissed >= 2 && !newNeedsReview){ newNeedsReview = true; newlyFlagged++; }
+        }
+        const { data: updData, error: updErr } = await sb.from("apchem_questions")
+          .update({ times_seen:newTimesSeen, times_missed:newTimesMissed, needs_review:newNeedsReview })
+          .eq("id", q.id).select();
+        if(updErr || !updData || updData.length===0){
+          updateFailures.push(q.num || q.id);
+        }
+      }
+
+      if(updateFailures.length > 0){
+        historyBox.style.background = "var(--incorrect-bg)";
+        historyBox.style.color = "var(--incorrect)";
+        historyBox.textContent = `Warning: ${updateFailures.length} question(s) failed to update their miss-history (source #${updateFailures.join(", ")}). Your score above is still accurate, but repeat-miss tracking may be off for those — check your Supabase connection.`;
+      }else{
+        let msg = `History saved and verified for all ${attemptsToSave.length} answered question(s).`;
+        if(newlyFlagged>0) msg += ` ${newlyFlagged} newly flagged for review (missed twice).`;
+        if(cleared>0) msg += ` ${cleared} cleared from review (got it right this time).`;
+        historyBox.textContent = msg;
+      }
+    }catch(err){
+      console.error("Failed to save attempt history", err);
+      historyBox.style.background = "var(--incorrect-bg)";
+      historyBox.style.color = "var(--incorrect)";
+      historyBox.textContent = "Warning: your attempt history did NOT save — " + err.message + " Your score above is accurate for this session, but it won't be remembered for missed-question tracking.";
+    }
+
+    const totalSecs = Object.values(timeSpent).reduce((a,b)=>a+b,0);
+    document.getElementById("scoreBig").textContent = `${correctCount}/${examQuestions.length}`;
+    document.getElementById("totalTime").textContent = fmtTime(totalSecs);
+    document.getElementById("avgTime").textContent = fmtTime(Math.round(totalSecs/examQuestions.length));
+    document.getElementById("resultsScreen").style.display = "block";
+  }
+
+  document.getElementById("backToBank").addEventListener("click", async ()=>{
+    document.getElementById("resultsScreen").style.display = "none";
+    document.getElementById("homeScreen").style.display = "block";
+    await loadBank();
+  });
+
+  loadBank();
+})();
+</script>
+</body>
+</html>
